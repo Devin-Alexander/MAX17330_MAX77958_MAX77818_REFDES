@@ -1,0 +1,25 @@
+Todo:
+
+Use cases:
+1.  USB PPS adapter (MAX77958 manages USB) + MAX17330 (manages 1 battery charging)
+    a.  Use MAX77958 to detect USB type
+    b.  If PPS type then regulate the USB voltage based on MAX17330 charging status (Dropout, or power/heat limit)
+    c.  If Type C - PD set to 5V leave it alone
+    d.  If TYpe C (normal) or BC1.2 leave it at 5V
+    e.  If charger is disconnected, reset settings, and start manangent again when charger connected
+2.  Parallel Battery (MAX77818 to manage USB --> 1S battery voltage) + 2x MAX17330
+    a.  Use MAX77818 to buck down the voltage and have MAX17330 regulate each battery current
+    b.  Use MAX77958 to detect USB type
+    c.  If PPS type, then set Input voltage to limit of MAX77818
+    d.  If Type C - PD set to maximum voltage (9V or 12V are common values)  below 14V
+    d.  If TYpe C (normal) or BC1.2 try to increase voltage to 9V or 12V
+    e.  If charger is disconnected, reset settings, and start manangent again when charger connected
+
+Top level items:
+Mode seelction for use case - instruct on jumper settings
+Make the interface more friendly for starting charge management and selecting INI files
+Make the interface more friendly for logging data
+
+Optional use case:
+    2x MAX17330 + MAX77958 with PPS
+
