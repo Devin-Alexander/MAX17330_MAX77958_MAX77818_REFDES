@@ -38,6 +38,11 @@ Master_I2C_Control_Write_Opcode          = 0x86
 
 
 class MAX77958:
+    pps_voltage = 0x00 # used to keep track of the current pps voltage
+    pps_voltage_min = 0x00 # TODO remove before final release. used as a starting point for the pps value when pps mode is enabled
+    pps_voltage_max = 0x00 # TODO remove before final release. used as an ending point to make sure there isn't excessive heating on MAX17330 while debugging 
+    pps_operating_current = 0x00 # denotes that there is no current limit and that it defaults to max current
+
     def __init__(self,SID=0x27):
         try:
             bus.write_byte(0x25,0x0)
@@ -83,7 +88,7 @@ class MAX77958:
         self.write_opcode(0x4,0x0f)
 
     ##############################################################################################################################
-    # set_pps() will configure the MAX77958 to setup and initialize the PPS mode to pass a voltage to a MAX17330 for charging
+    # @function set_pps() will configure the MAX77958 to setup and initialize the PPS mode to pass a voltage to a MAX17330 for charging
     # @param ENABLE is a byte that is either value 1 to enable PPS or value 0 to disable it
     # @param DEFAULT_OUTPUT_VOLTAGE_LOW is the lower byte of data for the voltage
     # @param DEFAULT_OUTPUT_VOLTAGE_HIGH is the higher byte of data for the voltage
@@ -99,6 +104,11 @@ class MAX77958:
         # check and see if the enable value is a 1 or a 0 and return error if not
         if ENABLE > 0x01:
             return -1
+        elif ENABLE = 0:
+            self.pps_voltage = 0x00  # reset this value to zero upon turning off PPS functionality
+        else: 
+            self.pps_voltage = (DEFAULT_OUTPUT_VOLTAGE_LOW & 0xFF) | ((DEFAULT_OUTPUT_VOLTAGE_HIGH & 0xFF) << 8)
+        
         
         # check and see if the voltage function input is in an invalid range of 0-20V
         if DEFAULT_OUTPUT_VOLTAGE_HIGH > 0x03:
@@ -125,7 +135,39 @@ class MAX77958:
         return din[1] #return the status of the PPS from the second byte of returned data
 
     ##############################################################################################################################
-    # manual_charger_detect() will configure the MAX77958 to run manual charger detection iteration
+    # @function change_pps_voltage() helper function called by the decrement/increment pps voltage function
+    # @return 0 = PPS Off
+    # @return 1 = PPS On
+    # @return 6 = DP Configured State
+    ##############################################################################################################################
+    def change_pps_voltage(self):
+        ENABLE = 0x01
+
+        dout=[]
+        dout.append(ENABLE)
+        dout.append(self.pps_voltage & 0x00FF)
+        dout.append((self.pps_voltage & 0xFF00) >> 8)
+        dout.append(self.pps_operating_current)
+
+        # write the data to the set_pps opcode at 
+        self.write_opcode(Set_PPS_Opcode, dout)
+
+        din=[]
+        # get a response 
+        din = self.read_opcode(Set_PPS_Opcode)
+        return din[1] #return the status of the PPS from the second byte of returned data
+
+
+    ##############################################################################################################################
+    # @function increment_pps_voltage() will increment the pps voltage setting by one hex valur = 10mV higher than before
+    ##############################################################################################################################
+    def increment_pps_voltage(self):
+        if self.pps_voltage == self.p
+        self.pps_voltage += 0x01
+
+
+    ##############################################################################################################################
+    # @function manual_charger_detect() will configure the MAX77958 to run manual charger detection iteration
     ##############################################################################################################################
     def manual_charger_detect(self):
         # Perform BC_CTRL1_Config_Read_Opcode 
@@ -138,12 +180,12 @@ class MAX77958:
         self.write_opcode(BC_CTRL1_Config_Write_Opcode, dout)
 
     ##############################################################################################################################
-    # auto_charger_detect() will configure the MAX77958 to run manual charger detection iteration
+    # @function auto_charger_detect() will configure the MAX77958 to run manual charger detection iteration
     # @param ENABLE is a byte that is either value 1 to enable auto charger detect or value 0 to disable it
     # @return -1 = invalid ENABLE byte sent
     # @return 0  = auto_charger_detect successfully configured
     ##############################################################################################################################
-    def auto_charger_detect(self, ENABLE)
+    def auto_charger_detect(self, ENABLE):
     # check and see if the enable value is a 1 or a 0 and return error if not
         if ENABLE > 0x01:
             return -1
@@ -158,6 +200,8 @@ class MAX77958:
         # Perform BC_CTRL1_Config_Write_Opcode 
         self.write_opcode(BC_CTRL1_Config_Write_Opcode, dout)
         return 0
+
+    
 
 #######################################################################################################################################################################
 #######################################################################################################################################################################
