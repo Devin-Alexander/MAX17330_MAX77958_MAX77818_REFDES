@@ -49,7 +49,7 @@ class MAX77958:
         self.write_opcode(0x4,0x0f)
 
     ##############################################################################################################################
-    # Function will configure the MAX77958 to setup and initialize the PPS mode to pass a voltage to a MAX17330 for charging
+    # set_pps() will configure the MAX77958 to setup and initialize the PPS mode to pass a voltage to a MAX17330 for charging
     # @param self is the I2C address of the MAX77958 device 
     # @param ENABLE is a byte that is either value 1 to enable PPS or value 0 to disable it
     # @param DEFAULT_OUTPUT_VOLTAGE_LOW is the lower byte of data for the voltage
@@ -92,8 +92,14 @@ class MAX77958:
         # get a response 
         din = self.read_opcode(pps_opcode)
         return din[1] #return the status of the PPS from the second byte of returned data
+    ##############################################################################################################################
+    # manual_charger_detect() will configure the MAX77958 to run manual charger detection iteration
+    # @return 0 = PPS Off
+    # @return 1 = PPS On
+    # '''
+    def manual_charger_detect():
 
-'''
+
 u=MAX77958(SID=0x27)
 while(1):
     time.sleep(1)
