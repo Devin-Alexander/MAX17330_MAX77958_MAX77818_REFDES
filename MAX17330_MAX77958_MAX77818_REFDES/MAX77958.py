@@ -3,6 +3,40 @@ import time
 from smbus import SMBus
 bus = SMBus(1)
 
+
+# List of Opcodes
+BC_CTRL1_Config_Read_Opcode              = 0x01
+BC_CTRL1_Config_Write_Opcode             = 0x02
+Control1_Read_Opcode                     = 0x05
+Control1_Write_Opcode                    = 0x06
+CC_Control1_Read_Opcode                  = 0x0B
+CC_Control1_Write_Opcode                 = 0x0C
+CC_Control4_Read_Opcode                  = 0x11
+CC_Control4_Write_Opcode                 = 0x12
+GPIO_Control_Read_Opcode                 = 0x23
+GPIO_Control_Write_Opcode                = 0x24
+GPIO0_GPIO1_ADC_Read_Opcode              = 0x27
+Get_Sink_Cap_Opcode                      = 0x2F
+Current_Src_Cap_Opcode                   = 0x30
+Get_Source_Cap_Opcode                    = 0x31
+Src_Cap_Request_Opcode                   = 0x32
+Set_Src_Cap_Opcode                       = 0x33
+Read_the_Response_for_Get_Request_Opcode = 0x35
+Send_Get_Response_Opcode                 = 0x36
+Send_Swap_Request_Opcode                 = 0x37
+Send_Swap_Response_Opcode                = 0x38
+APDO_SrcCap_Request_Opcode               = 0x3A
+Set_PPS_Opcode                           = 0x3C
+SNK_PDO_Request_Opcode                   = 0x3E
+SNK_PDO_Set_Opcode                       = 0x3F
+Get_PD_Message_Opcode                    = 0x4A
+Customer_Configuration_Read_Opcode       = 0x55
+Customer_Configuration_Write_Opcode      = 0x56
+Master_I2C_Control_Read_Opcode           = 0x85
+Master_I2C_Control_Write_Opcode          = 0x86
+
+
+
 class MAX77958:
     def __init__(self,SID=0x27):
         try:
@@ -50,7 +84,6 @@ class MAX77958:
 
     ##############################################################################################################################
     # set_pps() will configure the MAX77958 to setup and initialize the PPS mode to pass a voltage to a MAX17330 for charging
-    # @param self is the I2C address of the MAX77958 device 
     # @param ENABLE is a byte that is either value 1 to enable PPS or value 0 to disable it
     # @param DEFAULT_OUTPUT_VOLTAGE_LOW is the lower byte of data for the voltage
     # @param DEFAULT_OUTPUT_VOLTAGE_HIGH is the higher byte of data for the voltage
@@ -58,13 +91,11 @@ class MAX77958:
     # @return 0 = PPS Off
     # @return 1 = PPS On
     # @return 6 = DP Configured State
-    # @return -1 = invalid enable byte sent
+    # @return -1 = invalid ENABLE byte sent
     # @return -2 = wrong range is selected for programmed voltage 
     # @return -3 = wrong range is selected for programmed current
     ##############################################################################################################################
     def set_pps(self, ENABLE, DEFAULT_OUTPUT_VOLTAGE_LOW, DEFAULT_OUTPUT_VOLTAGE_HIGH, DEFAULT_OPERATING_CURRENT):
-        pps_opcode = 0x3c
-
         # check and see if the enable value is a 1 or a 0 and return error if not
         if ENABLE > 0x01:
             return -1
@@ -86,19 +117,56 @@ class MAX77958:
         dout.append(DEFAULT_OPERATING_CURRENT)
 
         # write the data to the set_pps opcode at 
-        self.write_opcode(pps_opcode, dout)
+        self.write_opcode(Set_PPS_Opcode, dout)
 
         din=[]
         # get a response 
-        din = self.read_opcode(pps_opcode)
+        din = self.read_opcode(Set_PPS_Opcode)
         return din[1] #return the status of the PPS from the second byte of returned data
+
     ##############################################################################################################################
     # manual_charger_detect() will configure the MAX77958 to run manual charger detection iteration
-    # @return 0 = PPS Off
-    # @return 1 = PPS On
-    # '''
-    def manual_charger_detect():
+    ##############################################################################################################################
+    def manual_charger_detect(self):
+        # Perform BC_CTRL1_Config_Read_Opcode 
+        din=[]
+        din = self.read_opcode(BC_CTRL1_Config_Read_Opcode)
+        # Bitwise OR the register data with CHGDetMan bit to configure manual charger detect
+        CHGDetMan = 0x02
+        dout=din[1] | CHGDetMan
+        # Perform BC_CTRL1_Config_Write_Opcode 
+        self.write_opcode(BC_CTRL1_Config_Write_Opcode, dout)
 
+    ##############################################################################################################################
+    # auto_charger_detect() will configure the MAX77958 to run manual charger detection iteration
+    # @param ENABLE is a byte that is either value 1 to enable auto charger detect or value 0 to disable it
+    # @return -1 = invalid ENABLE byte sent
+    # @return 0  = auto_charger_detect successfully configured
+    ##############################################################################################################################
+    def auto_charger_detect(self, ENABLE)
+    # check and see if the enable value is a 1 or a 0 and return error if not
+        if ENABLE > 0x01:
+            return -1
+        # Perform BC_CTRL1_Config_Read_Opcode 
+        din=[]
+        din = self.read_opcode(BC_CTRL1_Config_Read_Opcode)
+        # Clear CHGDetEn bit and then Bitwise OR the register data with ENABLE to configure auto charger detect
+        CHGDetManClear = 0xFE
+        CHGDetManBit = ENABLE
+        dout = din[1] & CHGDetManClear
+        dout |= CHGDetManBit 
+        # Perform BC_CTRL1_Config_Write_Opcode 
+        self.write_opcode(BC_CTRL1_Config_Write_Opcode, dout)
+        return 0
+
+#######################################################################################################################################################################
+#######################################################################################################################################################################
+#######################################################################################################################################################################
+#######################################################################################################################################################################
+#######################################################################################################################################################################
+#######################################################################################################################################################################
+#######################################################################################################################################################################
+#######################################################################################################################################################################
 
 u=MAX77958(SID=0x27)
 while(1):
