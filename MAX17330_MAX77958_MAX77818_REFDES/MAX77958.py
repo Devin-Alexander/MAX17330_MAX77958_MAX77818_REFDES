@@ -82,10 +82,18 @@ class MAX77958:
     pdo_src_max_voltage = [0,0,0,0,0,0,0,0] # From Bits 29-20 in PDO: Note: This will be different for a fixed supply PDO compared to APDO src
     pdo_src_min_voltage = [0,0,0,0,0,0,0,0] # From Bits 19-10 in PDO: This is always the min voltage for APDO or set voltage for fixed PDO src
     pdo_src_max_current = [0,0,0,0,0,0,0,0] # From Bits  9-0  in PDO: This is sifferent for Battery supply PDO
+    
+    apdo_pps_src_max_voltage = [0,0,0,0,0,0,0,0] # From Bits 24-17 in APDO: Note: This will be different for a fixed supply PDO compared to APDO src
+    apdo_pps_src_min_voltage = [0,0,0,0,0,0,0,0] # From Bits 15-8  in APDO: This is always the min voltage for APDO or set voltage for fixed PDO src
+    apdo_pps_src_max_current = [0,0,0,0,0,0,0,0] # From Bits  6-0  in APDO: This is sifferent for Battery supply PDO
+
     # converted variables for use with program
     conv_pdo_src_max_voltage = [0x000,0x0,0x0,0x0,0x0,0x0,0x0,0x0]# Converted from 50mV units into the respective 20mV increments supported by PD 3.0/MAX77958 for this program
     conv_pdo_src_min_voltage = [0x000,0x0,0x0,0x0,0x0,0x0,0x0,0x0]# Converted from 50mV units into the respective 20mV increments supported by PD 3.0/MAX77958 for this program
     conv_pdo_src_max_current = [0x000,0x0,0x0,0x0,0x0,0x0,0x0,0x0]# Converted from 10mA units into the respective 50mA increments supported by PD 3.0/MAX77958 for this program
+    # conv_apdo_pps_src_max_voltage = [0x000,0x0,0x0,0x0,0x0,0x0,0x0,0x0]# Converted from 50mV units into the respective 20mV increments supported by PD 3.0/MAX77958 for this program
+    # conv_apdo_pps_src_min_voltage = [0x000,0x0,0x0,0x0,0x0,0x0,0x0,0x0]# Converted from 50mV units into the respective 20mV increments supported by PD 3.0/MAX77958 for this program
+    # conv_apdo_pps_src_max_current = [0x000,0x0,0x0,0x0,0x0,0x0,0x0,0x0]# Converted from 10mA units into the respective 50mA increments supported by PD 3.0/MAX77958 for this program
 
     #def __init__(self,SID=0x27):
     def __init__(self,SID=0x25):
@@ -202,12 +210,15 @@ class MAX77958:
     def get_current_src_cap(self):
         # write the opcode to begin receiving data
         self.write_opcode(Current_Src_Cap_Opcode,0x00)
+
+        time.sleep(0.01)
         # get a response 
         dout=[]
         dout = self.read_opcode(Current_Src_Cap_Opcode)
         # print("Returned DATA from reading OPCODE 0x30")
         # for x in range(len(dout)):
         #     print(format(hex(dout[x])))
+        time.sleep(0.01)
 
         return dout
 
@@ -222,6 +233,11 @@ class MAX77958:
         self.conv_pdo_src_max_voltage = [0,0,0,0,0,0,0,0]
         self.conv_pdo_src_min_voltage = [0,0,0,0,0,0,0,0]
         self.conv_pdo_src_max_current = [0,0,0,0,0,0,0,0]
+
+        self.apdo_pps_src_max_voltage = [0,0,0,0,0,0,0,0]
+        self.apdo_pps_src_min_voltage = [0,0,0,0,0,0,0,0] 
+        self.apdo_pps_src_max_current = [0,0,0,0,0,0,0,0]
+
     
     def configure_pdo_src_variables(self):
         # Clear prev stored values for all PDO src variables
@@ -230,6 +246,8 @@ class MAX77958:
         din = []
         print(format(bin(len(din))))
         din = self.get_current_src_cap()
+
+
         
         time.sleep(0.1)
 
@@ -240,7 +258,9 @@ class MAX77958:
         # TODO remove after done debugging Load details in for each available src PDO
         print("Loading PDO info into variables")
         for n in range(self.pdo_src_num):
-            self.pdo_src_full_details[n] = din[n*4 + 2] | (din[n*4 + 3] << 8) | (din[n*4 + 4] << 16) | (din[n*4 + 5] << 24) # load contents of PDO into full details
+            self.pdo_src_full_details[n] = din[n*4 + 2] | (din[n*4 + 3] << 8) | (din[n*4 + 4] << 16) | (din[n*4 + 5] << 24) # load contents of PDO into full detail                        print("Max Voltage")
+            print("Full PDO deets")
+            print("PDO INDEX = ",n)
             print(format(hex(self.pdo_src_full_details[n])))
             self.pdo_src_type[n]         = (self.pdo_src_full_details[n] & 0xC0000000) >> 30 # take bits [31:30] and isolate them 
             self.pdo_src_max_voltage[n]  = ((self.pdo_src_full_details[n] & 0x3FF00000) >> 20) # take bits [29:20] and isolate them 
@@ -250,6 +270,41 @@ class MAX77958:
             self.conv_pdo_src_max_voltage[n] = math.floor(self.pdo_src_max_voltage[n] * 5.0 / 2.0) # 50mV to 20mV increments
             self.conv_pdo_src_min_voltage[n] = math.floor(self.pdo_src_min_voltage[n] * 5.0 / 2.0) # 50mV to 20mV increments
             self.conv_pdo_src_max_current[n] = math.floor(self.pdo_src_max_current[n] / 5.0) # 10mA to 50mA increments
+
+            self.apdo_pps_src_max_voltage[n] = ((self.pdo_src_full_details[n] & 0x01FE0000) >> 17) # take bits [24:17] and isolate them 
+            self.apdo_pps_src_min_voltage[n] = ((self.pdo_src_full_details[n] & 0x0000FF00) >> 8)  # take bits [15:8] and isolate them 
+            self.apdo_pps_src_max_current[n] = ((self.pdo_src_full_details[n] & 0x0000007F)) # take bits [6:0] and isolate them 
+
+            # print("Max Voltage")
+            # print(format(hex(self.pdo_src_max_voltage[n])))
+            # print(format(hex(self.conv_pdo_src_max_voltage[n])))
+            # print("Min Voltage")
+            # print(format(hex(self.pdo_src_min_voltage[n])))
+            # print(format(hex(self.conv_pdo_src_min_voltage[n])))
+            # print("Current")
+            # print(format(hex(self.pdo_src_max_current[n])))
+            # print(format(hex(self.conv_pdo_src_max_current[n])))
+
+            print("Max Voltage PPS")
+            print(self.apdo_pps_src_max_voltage[n]," = {}mV",self.apdo_pps_src_max_voltage[n]*100)
+            print("Min Voltage PPS")
+            print(self.apdo_pps_src_min_voltage[n]," = {}mV",self.apdo_pps_src_min_voltage[n]*100)
+            print("Current PPS")
+            print(self.apdo_pps_src_max_current[n]," = {}mA",self.apdo_pps_src_max_current[n]*50)
+
+            # print("Max Voltage")
+            # print(self.pdo_src_max_voltage[n]," = {}mV",self.pdo_src_max_voltage[n]*50)
+            # print(self.conv_pdo_src_max_voltage[n]," = {}mV",self.conv_pdo_src_max_voltage[n]*20)
+            # print("Min Voltage")
+            # print(self.pdo_src_min_voltage[n]," = {}mV",self.pdo_src_min_voltage[n]*50)
+            # print(self.conv_pdo_src_min_voltage[n]," = {}mV",self.conv_pdo_src_min_voltage[n]*20)
+            # print("Current")
+            # print(self.pdo_src_max_current[n]," = {}mA",self.pdo_src_max_current[n]*10)
+            # print(self.conv_pdo_src_max_current[n]," = {}mA",self.conv_pdo_src_max_current[n]*50)
+
+            time.sleep(0.1)
+
+
         # Load in the currently selected APDO details into the PPS variables
 
         return
@@ -261,8 +316,8 @@ class MAX77958:
     def find_pps_capable_pdo(self):
         dout = []
         for n in range(self.pdo_src_num):
-            if self.pdo_src_type[n] > 0x01: 
-                dout.append(n+1) #PDO objects are indexed at 0x01 not 0x00
+            if self.pdo_src_type[n] == 0x03:  # PPS devices always have the ID of 0x3 for the bits [31-30] of APDO
+                dout.append(n) #PDO objects are indexed at 0x01 not 0x00
                 print("APDO found ",n)
         if len(dout) == 0:
             return -1
@@ -306,24 +361,17 @@ class MAX77958:
         # check and see if the current function input is not at either max operating current or in range of 50-6200mA
         if OPERATING_CURRENT >= 0x7D:
             return -5
-
-        # If it makes it here, then it means everything is valid
-        self.pps_voltage_min = self.conv_pdo_src_min_voltage[REQ_APDO_POS]
-        self.pps_voltage_max = self.conv_pdo_src_max_voltage[REQ_APDO_POS]
-        self.pps_operating_current = OPERATING_CURRENT
-        self.pps_voltage = (OUTPUT_VOLTAGE_LOW & 0xFF) | ((OUTPUT_VOLTAGE_HIGH & 0xFF) << 8)
-        self.curr_pdo_src_selected = REQ_APDO_POS
         '''
 
         # If it makes it here, then it means everything is valid
-        self.pps_voltage_min = 0x96
-        self.pps_voltage_max = 0x228
+        self.pps_voltage_min = self.apdo_pps_src_min_voltage[REQ_APDO_POS] * 5 # multiply by 5 because this is stored in multiples of 20mV instead of 100mV like pps APDO stores it
+        self.pps_voltage_max = self.apdo_pps_src_max_voltage[REQ_APDO_POS] * 5 # multiply by 5 because this is stored in multiples of 20mV instead of 100mV like pps APDO stores it
         self.pps_operating_current = OPERATING_CURRENT
         self.pps_voltage = (OUTPUT_VOLTAGE_LOW & 0xFF) | ((OUTPUT_VOLTAGE_HIGH & 0xFF) << 8)
         self.curr_pdo_src_selected = REQ_APDO_POS
         
         dout=[]
-        dout.append(REQ_APDO_POS)
+        dout.append(REQ_APDO_POS + 1)  #PDO objects are indexed at 0x01 instead of 0x00
         dout.append(OUTPUT_VOLTAGE_LOW)
         dout.append(OUTPUT_VOLTAGE_HIGH)
         dout.append(OPERATING_CURRENT)
@@ -347,7 +395,7 @@ class MAX77958:
     # @return 6 = DP Configured State
     ##############################################################################################################################
     def update_pps_voltage(self):
-        dout = set_APDO_SrcCap_Request(self.curr_pdo_src_selected, self.pps_voltage & 0x00FF, ((self.pps_voltage & 0xFF00) >> 8), self.pps_operating_current)
+        dout = self.set_APDO_SrcCap_Request(self.curr_pdo_src_selected, self.pps_voltage & 0x00FF, ((self.pps_voltage & 0xFF00) >> 8), self.pps_operating_current)
         return dout
         '''
         ENABLE = 0x01

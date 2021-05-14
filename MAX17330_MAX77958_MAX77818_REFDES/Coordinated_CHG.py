@@ -151,20 +151,19 @@ def manage_charging():
 '''
 
 # Function to test the PPS increment voltage functions
-def pps_test():
-    pps_ret = 0
-    max_pps_voltage_test = usb.pps_voltage_min 
-    min_pps_voltage_test = usb.pps_voltage_max
-    var = usb.pps_voltage # get current voltage
-    print("usb.pps_voltage = {}".format(hex(usb.pps_voltage)))
-    # time.sleep(0.25)
+def pps_sawtooth_test():
+    # print("max pps_voltage = ",usb.pps_voltage_max*20,"mV")
+    # print("min pps_voltage = ",usb.pps_voltage_min*20,"mV")
+    print("cur pps_voltage = ",usb.pps_voltage*20,"mV")
 
-    if var < max_pps_voltage_test:
+    pps_ret = 0
+    if usb.pps_voltage < usb.pps_voltage_max:
         pps_ret = usb.increment_pps_voltage()
         #print("Stepping voltage up")
     else:
-        usb.set_APDO_SrcCap_Request(usb.curr_pdo_src_selected, usb.pps_voltage_min & 0x00ff, ((usb.pps_voltage_min & 0xff00) >> 8)) # Reset voltage back to 0 volts
-    print("usb.set_pps return value = {}".format(hex(pps_ret)))
+        usb.set_APDO_SrcCap_Request(usb.curr_pdo_src_selected, usb.pps_voltage_min & 0x00ff, ((usb.pps_voltage_min & 0xff00) >> 8),0x00) # Reset voltage back to min APDO PPS Volt ~3.3v
+    # print("usb.set_pps return value = {}".format(hex(pps_ret)))
+    # print()
     return pps_ret
 
 def alt_qc_test():
@@ -313,8 +312,8 @@ while(1):
     '''
     # TODO UNCOMMENT manage_charging()
     # alt_qc_test()
-    # pps_test()
+    pps_sawtooth_test()
     read_all_max77958_interrupts()
-    time.sleep(0.1)
+    time.sleep(0.01)
 
 #termios.tcsetattr(sys.stdin, termios.TCSADRAIN,filedescriptors)
