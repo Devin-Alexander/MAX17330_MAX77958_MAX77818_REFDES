@@ -67,10 +67,86 @@ class MAX17330(object):     #object):   #Gpib in raspberry pi
         return self.twos_comp(self.rw(0x28,self.sa))*0.15625*10/self.rsns
 
     def is_dropout(self):
-        if (self.rw(0xa3,self.sa) & 0x8000) >0:
+        data_before_stat_reg_CA_bit_clear = self.rw(0xa3,self.sa)
+        old_status_reg_value = 0
+        if (data_before_stat_reg_CA_bit_clear & 0x8000) >0:
+            # Clearing CA bit 11 in reg 0x0000 to detect next event
+            old_status_reg_value = self.rw(0x00,self.sa)
+            if (old_status_reg_value & 0x0800) > 0:
+                new_status_reg_value = old_status_reg_value & 0xF7FF # And with inverse of 0x0800 to clear bit
+                self.ww(0x00,new_status_reg_value,self.sa)
+                print()
+            return True
+        else:
+            return False 
+
+    def is_cp_event(self):
+        data_before_stat_reg_CA_bit_clear = self.rw(0xa3,self.sa)
+        old_status_reg_value = 0
+        if (data_before_stat_reg_CA_bit_clear & 0x0008) >0:
+            # Clearing CA bit 11 in reg 0x0000 to detect next event
+            old_status_reg_value = self.rw(0x00,self.sa)
+            if (old_status_reg_value & 0x0800) > 0:
+                new_status_reg_value = old_status_reg_value & 0xF7FF # And with inverse of 0x0800 to clear bit
+                self.ww(0x00,new_status_reg_value,self.sa)
+                print()
+            return True
+        else:
+            return False 
+
+    def is_ct_event(self):
+        data_before_stat_reg_CA_bit_clear = self.rw(0xa3,self.sa)
+        old_status_reg_value = 0
+        if (data_before_stat_reg_CA_bit_clear & 0x0004) >0:
+            # Clearing CA bit 11 in reg 0x0000 to detect next event
+            old_status_reg_value = self.rw(0x00,self.sa)
+            if (old_status_reg_value & 0x0800) > 0:
+                new_status_reg_value = old_status_reg_value & 0xF7FF # And with inverse of 0x0800 to clear bit
+                self.ww(0x00,new_status_reg_value,self.sa)
+                print()
+            return True
+        else:
+            return False 
+
+        
+
+    # Used to keep track if crosscharge is enabled or not
+    crosscharge_enabled = 0
+
+    # Used to set the par_en bit to enable parallel charging feature
+    def set_par_en_bit(self, value): # concerns nPackCfg Register(1B5h) 
+        reg_addr = 0x1b5
+        bit_mask = 0x01 << 6 # par en is the 6th bit
+        reg_data_before_bit_clear = self.rw(reg_addr,self.sa)
+        reg_data_after_bit_clear = reg_data_before_bit_clear & 0xFFBF # 0xFFBF is the inverse of 0x01 << 6 bits
+        new_reg_data = 0
+        if value is 1:
+            new_reg_data = reg_data_after_bit_clear | bit_mask
+            self.crosscharge_enabled = 1
+        else:
+            new_reg_data = reg_data_after_bit_clear
+            self.crosscharge_enabled = 0
+        self.ww(reg_addr,new_reg_data,self.sa)
+        return True
+    
+    # Indicate charger presense to all batteries (even blocked batteries)
+    def allow_chg_b(self): # concerns Status Register (000h)
+        reg_addr = 0x000
+        reg_data_before_bit_clear = self.rw(reg_addr,self.sa)
+        new_reg_data = reg_data_before_bit_clear & 0xFFDF # 0xFFBF is the inverse of 0x01 << 5 bits
+        self.ww(reg_addr,new_reg_data,self.sa)
+        return
+
+    # when this function is called, it returns whether or not there is a battery connected to this IC or not
+    def check_bst_bit(self): # concerns Status Register (000h)  
+        reg_addr = 0x000
+        bit_mask = 0x01 << 3 # bst is the 3rd bit
+        reg_data = self.rw(reg_addr,self.sa) & bit_mask
+        if reg_data:
             return True
         else:
             return False
+
     def set_VChg(self,VChg):
         self.unlock_WP()
         if type(VChg)==float:

@@ -1,6 +1,6 @@
 #Basic operations for MAX77818
 import time
-from smbus import SMBus
+from smbus2 import SMBus
 bus = SMBus(1)
 
 class MAX77818:
@@ -30,15 +30,15 @@ class MAX77818:
         else:
             bus.write_i2c_block_data(slave,addr,data)
     def rw(self,reg,s=0x36):
-		data=bus.read_word_data(s,reg)
-		return data
+        data=bus.read_word_data(s,reg)
+        return data
     def set_lock(self,lock):
         lock_reg = self.r(0xbd)
         if lock in ["unlock", "Unlock","U",'u',0,True]:
             self.w(0xbd,(lock_reg&0xF3)|0xC)
             self.unlocked = True
         else:
-            w(0xbd,lock_reg&0xF3)
+            self.w(0xbd,lock_reg&0xF3)
             self.unlocked = False
     def set_cv(self,voltage):
         #locks = self.unlocked

@@ -1,5 +1,5 @@
 #%%
-import smbus,time,os,thread
+import smbus,time,os,_thread
 from MAX17330 import MAX17330
 import RPi.GPIO as GPIO
 bus=smbus.SMBus(1)
@@ -82,13 +82,13 @@ def _read_log_line(dev,max_tries=10):
     timestamp = datetime.now().strftime('%m/%d/%Y %H:%M:%S')
     return timestamp + ',' + ','.join(map(hex,data))
 
-def data_log(dev,path, interval=10):
+def data_log(dev, path, interval=10):
     from datetime import datetime
     import traceback
 
     if not os.path.exists(path):
         outfile = open(path, 'wb')
-        outfile.write("Time,"+",".join(dev.reg_list())+ '\n')
+        outfile.write("Time,".encode("utf-8") + ",".join(dev.reg_list()).encode("utf-8") + '\n'.encode("utf-8")) # This line was changed to make it compatible with python 3
         outfile.flush()
     else:
         outfile = open(path, 'ab')
@@ -100,7 +100,7 @@ def data_log(dev,path, interval=10):
         while True:
             try:
                 line = _read_log_line(dev)
-                outfile.write(line + '\n')
+                outfile.write(line.encode("utf-8") + '\n'.encode("utf-8")) # This line was changed to make it compatible with python 3
                 if time.clock() > last_flush+60:
                     outfile.flush()
                     #os.fsync(outfile.fileno())
@@ -136,26 +136,28 @@ def print_details():
                     print("Error reading CHG1")
             else:
                 print("No CHG1")
-            if chg2 is not None:
-                try:
-                    print("Device 2:    VCell = {}   IChg = {}   Target = {}    VSYS={} ".format(chg2.get_vcell(),chg2.get_ibatt(),chg2.get_ichg(),chg2.get_vpckp()))
-                except:
-                    print("Error reading CHG2")
+            # if chg2 is not None:
+            #     try:
+            #         print("Device 2:    VCell = {}   IChg = {}   Target = {}    VSYS={} ".format(chg2.get_vcell(),chg2.get_ibatt(),chg2.get_ichg(),chg2.get_vpckp()))
+            #     except:
+            #         print("Error reading CHG2")
         except KeyboardInterrupt:
             print("User stopped logging.")
             return
 
 try:
     if chg1 is not None:
-        thread.start_new_thread(data_log,(chg1,"BC30_Dev1_{}.csv".format(time.strftime('%c') ),5))
-    if chg2 is not None:
-        thread.start_new_thread(data_log,(chg2,"BC30_Dev2_{}.csv".format(time.strftime('%c') ),5))
+        _thread.start_new_thread(data_log,(chg1,"BC30_Dev1_{}.csv".format(time.strftime('%c') ),5))
+    # if chg2 is not None:
+    #     _thread.start_new_thread(data_log,(chg2,"BC30_Dev2_{}.csv".format(time.strftime('%c') ),5))
 except:
     print("Unable to start thread")
 try:
-    thread.start_new_thread(print_details,())
+    _thread.start_new_thread(print_details,())
 except:
     print("Unable to start print details thread")    
 
 
 
+while(1):
+    time.sleep(1)
